@@ -58,7 +58,7 @@ class site_scraper:
         return int((url[startp:endp]))
 
     def getmagnetDataFromPageUrl(self, url):
-        #print("info, getmagnetDataFromPageUrl url = %s" % url)
+        print("info, getmagnetDataFromPageUrl url = %s" % url)
         bsObj = web_scraper_lib.getBsObj(url)
         tag = bsObj.findAll('a', href=re.compile('^magnet'))
 # > fieldset > ul ')
@@ -75,7 +75,7 @@ class site_scraper:
         if len(tag)>0:
 
           magnet = tag[0].get('href')
-          #print("info, getmagnetDataFromPageUrl magnet = %s" % magnet)
+          print("info, getmagnetDataFromPageUrl magnet = %s" % magnet)
 
 #        sys.exit()
 

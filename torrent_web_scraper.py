@@ -10,6 +10,8 @@ import web_scraper_torrentsir
 import web_scraper_lib
 import subprocess
 import time
+import re
+import pdb
 
 __version__ = 'v1.00'
 
@@ -18,7 +20,7 @@ if __name__ == '__main__':
     SETTING_PATH = os.path.realpath(os.path.dirname(__file__))+"/"
 
     SETTING_FILE = SETTING_PATH+"settings.json"
-    HISTORY_FILE = SETTING_PATH+"web_scraper_history.csv"
+    HISTORY_FILE = SETTING_PATH+"magnet_"
     MAIL_NOTI_HISTORY = SETTING_PATH+"mail_noti_history.csv"
     runTime = dtime.now().strftime("%Y-%m-%d %H:%M:%S")
     #print("%s %s is going to work at %s. %s" % (os.path.basename(__file__),
@@ -51,9 +53,10 @@ if __name__ == '__main__':
     for site_index, site in enumerate(siteList):
 
         #Step 1. test for access with main url
-        #print("====================================\n=> Try to access site : ", site.getMainUrl())
+        print("====================================\n=> Try to access site : ", site.getMainUrl())
 
         if not site.checkMainUrl():
+          # main url 을 갱신하는 로직을 넣자.
             continue
 
         #Step 2. Iterate category for this site
@@ -61,7 +64,7 @@ if __name__ == '__main__':
             cateIdx = category.get("idx")
             #Step 3. setup Latest Id for this site/this category
             needNewLatestId = True
-            #print("scraping [%s][%s]" % (scraper.sitename, cateIdx))
+            # print("scraping [%s][%s]" % (scraper.sitename, cateIdx))
 
             #Step 4. iterate page (up to 10) for this site/this category
             for count in range(1, webpage_max+1):
@@ -71,25 +74,25 @@ if __name__ == '__main__':
                 url = site.getScrapUrl(category, count)
                 boardList = site.getParseData(url)
 
-                #print("info: url=%s" % url)
+                print("info: url=%s" % url)
 
                 if boardList is None:
                     continue
                 #for board in boardList:
                 for num, board in enumerate(boardList, start=1):
-                    #print("info: board=%s" % board)
+                    print("info: board=%s" % board)
                     #게시판 제목
                     title = board.get_text().replace('\t', '').replace('\n', '')
                     href = board.get('href').replace('..', site.mainUrl)
-                    #print("info: href=\t%s" % href)
+                    print("info: href=\t%s" % href)
                     boardIdNum = site.get_wr_id(href)
-                    #print("[%d][%d] - %s" % (num, boardIdNum, title))
+                    print("[%d][%d] - %s" % (num, boardIdNum, title))
 
                     if needNewLatestId:
                         newLatestId = site.get_wr_id(href)
                         if newLatestId > 0:
                             #웹페이지상의 게시판번호와 실제 게시물번호는 다를 수 있음
-                            #print("We set up for new latest ID %d." % newLatestId)
+                            print("We set up for new latest ID %d." % newLatestId)
                             needNewLatestId = False
                         else:
                             print("Something wrong, cannot get new latest ID - %d." % newLatestId)
@@ -98,7 +101,7 @@ if __name__ == '__main__':
                     if num == 1:
                         if (category['history']> boardIdNum):
                             needKeepgoing = False
-                            #print("needKeepgoing is false --> break \tcateIdx=%s,boardIdNum=%s" % (cateIdx,boardIdNum))
+                            print("needKeepgoing is false --> break \tcateIdx=%s,boardIdNum=%s" % (cateIdx,boardIdNum))
                             break
                     if cateIdx.find("movie")>-1:
                       matched_name = web_scraper_lib.checkTitleWithMovieList(title, MOVIE_LIST_FILE, \
@@ -107,14 +110,18 @@ if __name__ == '__main__':
                       matched_name=web_scraper_lib.checkTitleWithProgramList(title, JD.get("program-list"))
 
                     if not matched_name:
-                        #print("info main matched_name ", title)
+                        print("info main matched_name ", title)
+                        if title.strip() == "" :
+                          continue
+                        title = re.sub('[",…]','',title)
+
                         if JD.get("mail-noti")=="":
-                          continue;
+                          continue
                         email = JD.get("mail-noti").get("address")
                         if email =="":
-                          continue;
+                          continue
                         for keyword in JD.get("mail-noti").get("keywords"):
-                          #print("noti keyword: "+keyword)
+                          print("noti keyword: "+keyword)
 
                           if web_scraper_lib.check_mail_noti_history(MAIL_NOTI_HISTORY, title):
                             continue
@@ -125,6 +132,17 @@ if __name__ == '__main__':
                             cmd = cmd.replace("$address",email)
                             subprocess.call(cmd, shell=True)
                             web_scraper_lib.add_mail_noti_to_file(MAIL_NOTI_HISTORY, runTime, site.name, title, keyword)
+                        
+                        magnet = site.getmagnetDataFromPageUrl(href)
+                        # pdb.set_trace()
+                        if web_scraper_lib.check_magnet_history(HISTORY_FILE+cateIdx+".csv", magnet):
+                          print("csv write pass")
+                          continue
+                        else:
+                          print("csv write")
+                          web_scraper_lib.add_magnet_info_to_file(HISTORY_FILE+cateIdx+".csv",
+                            runTime, site.name, title, magnet, matched_name)
+                        
                         continue
 
                     if (category['history']> boardIdNum):
@@ -139,7 +157,7 @@ if __name__ == '__main__':
                     if magnet =="":
                       continue
                     time.sleep(3)
-                    #print("\t%s" % magnet)
+                    print("\t%s" % magnet)
 
                     #magnet was already downloaded.
                     if web_scraper_lib.check_magnet_history(HISTORY_FILE, magnet):
@@ -177,7 +195,7 @@ if __name__ == '__main__':
                       f.close()
                     else:
                       web_scraper_lib.remove_transmission_remote(JD, session_id, matched_name)
-
+                    pdb.set_trace()
                     web_scraper_lib.add_magnet_info_to_file(HISTORY_FILE,
                             runTime, site.name, title, magnet, matched_name)
 

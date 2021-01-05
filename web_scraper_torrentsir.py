@@ -55,14 +55,14 @@ class site_scraper:
         return int((url[startp:endp]))
 
     def getmagnetDataFromPageUrl(self, url):
-        #print("info, getmagnetDataFromPageUrl url = %s" % url)
+        print("info, getmagnetDataFromPageUrl url = %s" % url)
         bsObj = web_scraper_lib.getBsObj(url)
         # a 태그 중에 href가 magnet으로 시작하는 태그.
         tag = bsObj.findAll('a', href=re.compile('^magnet'))
 
         if len(tag)>0:
           magnet = tag[0].get('href')
-          #print("info, getmagnetDataFromPageUrl magnet = %s" % magnet)
+          print("info, getmagnetDataFromPageUrl magnet = %s" % magnet)
         else:
           magnet = ""
 
